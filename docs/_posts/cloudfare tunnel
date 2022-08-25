@@ -1,0 +1,88 @@
+# windows使用cloudfare tunnel免费内网穿透
+
+下载
+
+[https://github.com/cloudflare/cloudflared/releases](https://zsxwz.com/go/?url=https://github.com/cloudflare/cloudflared/releases)
+
+## 1、下载运行。
+
+比如windows下载对应架构版本的.exe程序，重命名一下cloudflared，然后随便放到系统环境变量的文件夹即可，比如：C:\Windows\System32
+
+运行，内网穿透：
+
+```
+cloudflared tunnel --url localhost:8000
+```
+
+会返回trycloudflare.com结尾的一大串链接，就是穿透的链接，直接打开就可以了，不过这个链接每一次重新运行的时候都不一样。
+
+## 2、使用自己的域名
+
+自己有域名就每一次重新运行都用不同的域名了，方便记忆。而且cloudflare穿透的域名哪天被墙了，也可以正常访问。
+
+```
+\#登录cloudflare
+
+cloudflared tunnel login
+
+\#创建隧道，<Tunnel-NAME>名称随意
+
+cloudflared tunnel create <Tunnel-NAME>
+
+\#将隧道解析到自己的域名上，<Tunnel-NAME>名称同上，<SUBDOMAIN>就是你想创建的子域名，不用自己先创建。
+
+cloudflared tunnel route dns <Tunnel-NAME> <SUBDOMAIN>
+```
+
+登录到cloudflare绑定自己的域名之后，会生成证书。创建隧道之后会生成xxxx.json的配置文件，xxxx就是你隧道的id。windows一般是在C:\Users\你的用户名\.cloudflared 文件夹，linux一般是在~/.cloudflared文件夹。
+
+使用自己的子域名穿透：
+
+```
+cloudflared tunnel --url localhost:8000 run <Tunnel-NAME>
+```
+
+打开自己的子域名即可。
+
+## 3、自定义配置文件
+
+config.yml，windows一般是在C:\Users\你的用户名\cloudflared 文件夹，linux一般是在~/.cloudflared文件夹
+
+[https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/configuration/arguments/#config](https://zsxwz.com/go/?url=https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/configuration/arguments/#config)
+
+简单示例：
+
+```
+tunnel: <Tunnel-UUID>
+
+credentials-file: /root/.cloudflared/<Tunnel-UUID>.json
+
+protocol: http2
+
+originRequest:
+
+  connectTimeout: 30s
+
+  noTLSVerify: false
+
+ingress:
+
+  - hostname: <SUBDOMAIN>子域名1
+
+    service: http://localhost:80
+
+  - hostname: <SUBDOMAIN>子域名2
+
+    service: ssh://localhost:22
+
+  - service: http_status:404
+```
+
+protocol协议，http2与h2mux均可正常建立连接，只有quic无法建立连接，国内不可描述原因也没什么好说的了。
+
+使用自定义配置文件运行：
+
+```
+cloudflared --config <config-File> tunnel run <Tunnel-NAME>
+```
+
